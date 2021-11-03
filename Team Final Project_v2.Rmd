@@ -1,0 +1,97 @@
+---
+title: "Final Project R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#library
+```{r libraries, echo=FALSE}
+library(tidyverse)
+library(readr)
+library(Hmisc)
+library(ggpubr)
+library(MASS)
+library(scales)
+library(ggcorrplot)
+library(faraway)
+library(rpart)
+library(randomForest)
+library(corrplot)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(ROCR)
+library(caret)
+library(gower)
+```
+
+#reading data
+```{r reading data, echo=FALSE}
+data <- read.csv("Base Limpa v3.csv", header=TRUE)
+summary(data)
+str(data)
+
+#converting characters to factors and outcome to factor
+data <- mutate_if(data, is.character, factor)
+data$is_canceled <- as.factor(data$is_canceled)
+```
+
+
+#Creating train and test bases
+```{r partition method 1, echo=FALSE}
+set.seed(123)
+dt = sort(sample(nrow(data), nrow(data)*0.20))
+
+trainData1 = data[dt,]
+testData1 = data[-dt,]
+```
+
+#Alternative train and test bases
+```{r partition method 2, echo=FALSE}
+set.seed(111)
+trainList <- createDataPartition(y=data$is_canceled, p=0.20, list=FALSE)
+
+trainData2 <- data[trainList,]
+testData2 = data[-trainList,]
+```
+
+#SVM Model
+```{r SVM Model, echo=FALSE}
+svm.model <- train(is_canceled~., data = trainData2, method = "svmRadial", 
+                   trControl = trainControl(method="none"), preProcess = c("center", "scale"))
+```
+
+#Prediction SVM Model
+```{r Prediction SVM Model, echo=FALSE}
+predictValues1 <- predict(svm.model, newdata = testData2)
+confusionMatrix(predictValues1, testData2$is_canceled)
+```
+
+#Classification and Regression Trees Model
+```{r Classification Tree, echo=FALSE}
+model.rpart <- train(is_canceled~., data = trainData2, method = "rpart", 
+                   trControl = trainControl(method="repeatedcv", number=10), 
+                   tuneLength = 5)
+```
+
+#Prediction Classification Tree
+```{r Prediction Tree, echo=FALSE}
+predictValues2 <- predict(model.rpart, newdata = testData2)
+confusionMatrix(predictValues2, testData2$is_canceled)
+```
+
+#Decision Tree Plot
+```{r Plot Decision Tree, echo=FALSE}
+library(rpart.plot)
+rpart.plot(model.rpart$finalModel)
+
+```
+
+#Important Variables
+```{r Important Variables, echo=FALSE}
+varImp(model.rpart)
+```
+
